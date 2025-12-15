@@ -27,6 +27,7 @@ jobs:
     - name: Install dependencies (필요한 라이브러리 설치)
       run: |
         # win32com(Outlook)을 제외한 모든 라이브러리 설치
+        # xlrd는 openpyxl이 대체하므로 삭제했습니다.
         pip install pandas openai python-pptx feedparser openpyxl
 
     - name: Set up AI Key (비밀 변수 로드)
@@ -36,10 +37,11 @@ jobs:
       run: |
         echo "API Key loaded."
 
-    - name: Run Report System (execute() 함수 실행)
-      # GUI 코드를 제외하고 보고서 생성 및 발송 로직 실행
+    - name: Run Report System (메인 스크립트 실행)
+      # ⚠️ 수정된 부분: python main.py로 변경
+      # 이 방식이 main 모듈을 더 안정적으로 찾을 수 있습니다.
       run: |
-        python -c "from main import execute; execute()"
+        python main.py
 
     - name: Upload Report Artifacts (결과물 저장)
       # 생성된 Excel/PPT/Zip 파일을 다운로드할 수 있도록 보관
