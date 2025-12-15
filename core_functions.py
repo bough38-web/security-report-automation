@@ -4,7 +4,7 @@ import feedparser
 import pandas as pd
 import logging
 from openai import OpenAI
-import win32com.client as win32
+# import win32com.client as win32
 from datetime import datetime
 from config import (
     GOOGLE_NEWS_URL, MAX_NEWS_ENTRIES, RISK_KEYWORDS,
