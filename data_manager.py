@@ -1,47 +1,27 @@
-# data_manager.py
-import os
 import json
-import zipfile
-import pandas as pd
-import logging
-from datetime import datetime
-from config import BASE_DIR, OUTPUT_DIR, KEYWORD_FILE, INITIAL_KEYWORDS
-
-# 로깅 설정
-logger = logging.getLogger(__name__)
+import os
+from dotenv import load_dotenv
+from config import DATA_FILE
 
 def setup_environment():
-    """출력 디렉토리 생성 및 키워드 파일 초기화"""
-    try:
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
-        if not os.path.exists(KEYWORD_FILE):
-            with open(KEYWORD_FILE, "w", encoding="utf-8") as f:
-                json.dump(INITIAL_KEYWORDS, f, ensure_ascii=False, indent=2)
-            logger.info("초기 keywords.json 파일 생성 완료.")
-    except Exception as e:
-        logger.error(f"환경 설정 오류: {e}")
-        raise
+    """환경 변수(.env)를 로드합니다."""
+    # GitHub Actions에서는 Secrets가 자동으로 주입되므로 .env가 없어도 괜찮습니다.
+    load_dotenv() 
 
 def load_keywords():
-    """키워드 파일 로드"""
+    """JSON 파일에서 키워드 목록을 불러옵니다."""
+    if not os.path.exists(DATA_FILE):
+        return []
     try:
-        with open(KEYWORD_FILE, "r", encoding="utf-8") as f:
+        with open(DATA_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
-    except FileNotFoundError:
-        logger.warning(f"{KEYWORD_FILE} 파일이 없어 초기 키워드를 로드합니다.")
-        return INITIAL_KEYWORDS
-    except json.JSONDecodeError as e:
-        logger.error(f"키워드 파일 JSON 디코딩 오류: {e}")
-        return INITIAL_KEYWORDS
-    except Exception as e:
-        logger.error(f"키워드 로드 중 오류 발생: {e}")
-        raise
+    except (json.JSONDecodeError, IOError):
+        return []
 
-def save_keywords(data):
-    """키워드 파일 저장"""
-    try:
-        with open(KEYWORD_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+def save_keywords(keywords):
+    """키워드 목록을 JSON 파일에 저장합니다."""
+    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(keywords, f, ensure_ascii=False, indent=4)
         logger.info("키워드 파일 저장 완료.")
     except Exception as e:
         logger.error(f"키워드 파일 저장 오류: {e}")
