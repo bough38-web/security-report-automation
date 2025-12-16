@@ -1,19 +1,41 @@
 # main.py
-import os, json
+import os
+import sys
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 import logging
 
-# 다른 모듈에서 함수 및 설정 가져오기
-from core_functions import execute, client # execute 함수와 OpenAI 클라이언트
-from data_manager import load_keywords, save_keywords, setup_environment
+# 1. 설정 및 데이터 매니저를 '가장 먼저' 임포트합니다.
 from config import BASE_DIR, LOG_FILE
+from data_manager import load_keywords, save_keywords, setup_environment
+
+# 2. [중요] 환경 변수 로드를 다른 모든 무거운 모듈 임포트보다 먼저 실행합니다.
+# 이렇게 해야 이후 임포트되는 모듈들이 API Key를 인식할 수 있습니다.
+setup_environment()
+
+# 3. 환경 설정이 완료된 후 핵심 기능(OpenAI 클라이언트 포함)을 임포트합니다.
+try:
+    from core_functions import execute, client 
+except Exception as e:
+    # API 키 오류 등으로 임포트 자체가 실패할 경우를 대비한 예외 처리
+    print(f"[CRITICAL] core_functions 모듈 로드 실패: {e}")
+    # GitHub Actions 환경이 아니라면 GUI 알림 시도 (Tkinter 초기화 전이라 제한적일 수 있음)
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, f"모듈 로드 실패: {e}", "치명적 오류", 0)
+    sys.exit(1)
+
 
 # =========================
 # 로깅 설정 초기화
 # =========================
 def setup_logging():
     """로그 시스템을 설정합니다."""
+    # 로그 디렉토리가 없으면 생성 (안전장치)
+    log_dir = os.path.dirname(LOG_FILE)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -78,7 +100,6 @@ class App(tk.Tk):
         for k in load_keywords():
             self.list.insert(tk.END, k)
 
-    # (add, edit, delete 함수는 기존과 동일)
     def add(self):
         v = simpledialog.askstring("키워드 추가", "새로운 키워드를 입력하세요.")
         if v and v.strip():
@@ -127,7 +148,7 @@ class App(tk.Tk):
 # =========================
 def start_application():
     """실행 환경(CLI vs GUI)을 구분하여 애플리케이션을 시작합니다."""
-    setup_environment()
+    # setup_environment()는 이미 상단에서 실행되었으므로 여기서 다시 호출할 필요가 없습니다.
     
     # GITHUB_ACTIONS 환경 변수가 'true'이면 GitHub Actions에서 실행 중
     is_github_actions = os.environ.get("GITHUB_ACTIONS") == "true"
@@ -139,15 +160,16 @@ def start_application():
             execute()
             logger.info("GitHub Actions CLI 환경 실행 완료.")
         except Exception as e:
-            # GitHub Actions에서 발생한 오류는 로그로 기록하고 실패 상태를 반환
             logger.error(f"GitHub Actions 실행 중 치명적인 오류 발생: {e}")
-            # sys.exit(1)을 사용하여 Action을 실패시킬 수도 있지만,
-            # 현재는 로그를 남기고 정상 종료합니다.
-            raise # 오류를 다시 발생시켜 Action을 실패시킵니다.
+            raise # 오류를 다시 발생시켜 GitHub Action이 실패로 표시되게 함
     else:
         # 로컬 환경: GUI 실행
         logger.info("로컬 GUI 환경 실행 시작.")
-        App().mainloop()
+        try:
+            app = App()
+            app.mainloop()
+        except KeyboardInterrupt:
+            logger.info("사용자에 의해 프로그램 종료")
 
 if __name__ == "__main__":
     start_application()
