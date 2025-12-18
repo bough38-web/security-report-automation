@@ -2,71 +2,64 @@ import csv
 import json
 import os
 
-# --- [설정] 파일명 설정 ---
-# ★ 반드시 파일을 'data.csv'로 저장하고 실행하세요.
-input_filename = 'data.csv'
+# --- [설정] 파일명 ---
+# 업로드해주신 파일명과 동일하게 설정했습니다.
+input_filename = 'data.csv' 
 output_filename = 'index.html'
 
-# --- [1] 데이터 읽기 및 전처리 ---
+# --- [1] 데이터 읽기 ---
 news_data = []
-
-print(f"🔄 '{input_filename}' 파일을 검색하고 있습니다...")
+print(f"🔄 '{input_filename}' 파일을 처리 중입니다...")
 
 try:
-    # utf-8-sig: 엑셀에서 저장한 CSV의 한글 깨짐 방지
+    # utf-8-sig로 인코딩하여 한글 깨짐 방지
     with open(input_filename, mode='r', encoding='utf-8-sig') as csvfile:
         reader = csv.DictReader(csvfile)
         
-        # 컬럼명 공백 제거 (오류 방지)
+        # 컬럼명 공백 제거
         if reader.fieldnames:
             reader.fieldnames = [h.strip() for h in reader.fieldnames]
 
         for row in reader:
-            # 안전하게 데이터 가져오기
+            # 데이터 추출 (안전하게 get 사용)
             keyword = row.get('keyword', '').strip()
             title = row.get('title', '').strip()
             link = row.get('link', '').strip()
-            if not link: link = "#" # 링크 없으면 # 처리
             
-            # 날짜 처리 (date_fmt가 없으면 date 사용)
-            date = row.get('date_fmt', row.get('date', '')).strip()
-            if not date: date = "날짜 미상"
+            # 날짜: date_fmt가 있으면 우선 사용, 없으면 date 사용
+            date = row.get('date_fmt', '').strip()
+            if not date:
+                date = row.get('date', '').strip()
             
-            # 리스크 등급 처리
+            # 리스크 등급 정규화
             risk = row.get('risk', 'GREEN').strip().upper()
             if risk not in ['RED', 'AMBER', 'GREEN']:
                 risk = 'GREEN'
 
-            if title: # 제목이 있는 데이터만 추가
+            # 필수 데이터(제목)가 있는 경우만 추가
+            if title:
                 news_data.append({
                     "keyword": keyword,
                     "title": title,
-                    "link": link,
+                    "link": link if link else "#",
                     "date": date,
                     "risk": risk
                 })
 
-    print(f"✅ 성공! 총 {len(news_data)}개의 뉴스를 읽었습니다.")
+    print(f"✅ 데이터 로드 완료: 총 {len(news_data)}건")
 
 except FileNotFoundError:
-    print(f"❌ 오류: '{input_filename}' 파일을 찾을 수 없습니다.")
-    print("👉 엑셀 파일을 '다른 이름으로 저장' -> 'CSV (UTF-8)' 선택 -> 파일명 'data.csv'로 저장해주세요.")
-except Exception as e:
-    print(f"❌ 데이터 읽기 오류: {e}")
-
-# --- [비상용] 데이터가 없거나 읽기 실패 시 테스트 데이터 사용 ---
-if len(news_data) == 0:
-    print("⚠️ 데이터를 읽지 못해 '테스트 데이터'로 대시보드를 생성합니다.")
+    print(f"❌ 오류: '{input_filename}' 파일을 찾을 수 없습니다. 같은 폴더에 파일이 있는지 확인해주세요.")
+    # 파일이 없을 때를 대비한 더미 데이터 (테스트용)
     news_data = [
-        {"keyword": "시스템", "title": "data.csv 파일을 읽지 못했습니다. 파일 위치를 확인하세요.", "link": "#", "date": "2025-01-01", "risk": "RED"},
-        {"keyword": "KT", "title": "[예시] KT 차기 CEO 박윤영 내정, 경영 정상화 시동", "link": "#", "date": "2025-12-16", "risk": "GREEN"},
-        {"keyword": "SK쉴더스", "title": "[예시] SK쉴더스 해킹 이슈, 고객 정보 유출 우려", "link": "#", "date": "2025-10-27", "risk": "RED"},
+        {"keyword": "System", "title": "데이터 파일을 찾을 수 없습니다.", "link": "#", "date": "2025-01-01", "risk": "RED"}
     ]
 
-# JSON 변환
+# JSON 직렬화 (HTML 내 자바스크립트 변수로 주입)
 json_data = json.dumps(news_data, ensure_ascii=False)
 
-# --- [2] HTML 템플릿 (전문가용 디자인) ---
+
+# --- [2] HTML 템플릿 작성 (전문가용 대시보드) ---
 html_content = f"""
 <!DOCTYPE html>
 <html lang="ko">
@@ -80,229 +73,382 @@ html_content = f"""
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         body {{ font-family: 'Noto Sans KR', sans-serif; background-color: #f1f5f9; }}
+        /* 카드 스타일: 유리 질감 및 호버 효과 */
         .glass-card {{ background: white; border: 1px solid #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-radius: 12px; }}
-        .glass-card:hover {{ transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transition: all 0.2s; }}
-        .badge-RED {{ background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }}
-        .badge-AMBER {{ background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }}
-        .badge-GREEN {{ background: #f0fdf4; color: #166534; border: 1px solid #86efac; }}
+        .glass-card:hover {{ transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transition: all 0.2s ease; border-color: #94a3b8; }}
+        
+        /* 리스크 뱃지 스타일 */
+        .badge-RED {{ background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }}
+        .badge-AMBER {{ background-color: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }}
+        .badge-GREEN {{ background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }}
+        
+        /* 스크롤바 커스텀 */
+        ::-webkit-scrollbar {{ width: 8px; }}
+        ::-webkit-scrollbar-track {{ background: #f1f5f9; }}
+        ::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 4px; }}
+        ::-webkit-scrollbar-thumb:hover {{ background: #94a3b8; }}
     </style>
 </head>
 <body class="text-slate-800">
 
-    <nav class="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
+    <nav class="bg-slate-900 text-white sticky top-0 z-50 shadow-lg backdrop-blur-md bg-opacity-95">
         <div class="container mx-auto px-4 h-16 flex items-center justify-between max-w-7xl">
             <div class="flex items-center gap-3">
-                <i class="ph-fill ph-shield-check text-2xl text-blue-400"></i>
-                <h1 class="text-lg font-bold">Security Analysis</h1>
+                <div class="p-1.5 bg-blue-600 rounded-lg">
+                    <i class="ph-bold ph-shield-check text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">Security Insight</h1>
+                    <p class="text-[10px] text-slate-400 font-mono tracking-wider">REAL-TIME MONITORING</p>
+                </div>
             </div>
-            <div class="text-xs text-slate-400 font-mono">
-                DATA: {input_filename}
+            <div class="flex items-center gap-3">
+                <span class="px-3 py-1 bg-slate-800 rounded-full text-xs border border-slate-700 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    Live Data
+                </span>
             </div>
         </div>
     </nav>
 
     <div class="container mx-auto px-4 py-6 max-w-7xl">
         
-        <div class="glass-card p-6 mb-6 bg-gradient-to-br from-slate-800 to-slate-900 text-white border-none">
-            <div class="flex items-start gap-4">
-                <div class="p-3 bg-white/10 rounded-lg"><i class="ph-duotone ph-robot text-3xl text-blue-300"></i></div>
+        <div class="glass-card p-6 mb-6 bg-gradient-to-r from-slate-800 to-slate-900 text-white border-none relative overflow-hidden">
+            <div class="absolute right-0 top-0 h-full w-1/3 bg-blue-500 opacity-10 skew-x-12 transform translate-x-12"></div>
+            
+            <div class="relative z-10 flex flex-col md:flex-row gap-6 items-start">
+                <div class="shrink-0 flex flex-col justify-center items-center w-full md:w-32 border-r border-slate-700 pr-0 md:pr-6 py-2">
+                    <i class="ph-duotone ph-brain text-4xl text-blue-400 mb-2"></i>
+                    <span class="text-[10px] font-bold text-blue-200 tracking-widest">AI ANALYSIS</span>
+                </div>
                 <div>
-                    <h2 class="text-lg font-bold mb-2 text-white">임원용 AI 인사이트 요약</h2>
-                    <p class="text-sm text-slate-300 leading-relaxed">
-                        최근 <strong>KT, SK쉴더스, 에스원</strong> 등의 보안 이슈가 감지되었습니다. 
-                        특히 <span class="text-red-300 font-bold">RED 등급</span>(해킹, 사고 등) 이슈는 즉각적인 대응이 필요하며, 
-                        하단 차트를 통해 일별 트렌드와 리스크 점유율을 확인하십시오.
-                    </p>
+                    <h2 class="text-lg font-bold mb-3 flex items-center gap-2">
+                        보안/안전 키워드 분석 브리핑
+                    </h2>
+                    <ul class="space-y-2 text-sm text-slate-300 leading-relaxed">
+                        <li class="flex items-start gap-2">
+                            <i class="ph-fill ph-warning-octagon text-red-400 mt-1"></i>
+                            <span><strong>SK쉴더스 (Critical):</strong> 해킹 사고 및 고객 정보 유출 이슈로 인해 부정적 여론이 급증했습니다. (Risk: RED)</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="ph-fill ph-trend-up text-green-400 mt-1"></i>
+                            <span><strong>KT & KT텔레캅 (Positive):</strong> KT 차기 CEO 선임(박윤영) 및 지자체 AI 협력 소식으로 긍정적 모멘텀을 유지 중입니다.</span>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="glass-card p-4 border-l-4 border-blue-500">
-                <span class="text-xs font-bold text-slate-500">전체 뉴스</span>
-                <p class="text-3xl font-bold mt-1" id="kpi-total">0</p>
+            <div class="glass-card p-5 border-l-4 border-blue-500">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Total News</span>
+                    <i class="ph-fill ph-article text-blue-200 text-xl"></i>
+                </div>
+                <h3 class="text-3xl font-bold text-slate-800" id="kpi-total">-</h3>
             </div>
-            <div class="glass-card p-4 border-l-4 border-red-500 bg-red-50/50">
-                <span class="text-xs font-bold text-red-700">심각 (Critical)</span>
-                <p class="text-3xl font-bold mt-1 text-red-600" id="kpi-red">0</p>
+            <div class="glass-card p-5 border-l-4 border-red-500 bg-red-50/30">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold text-red-600 uppercase">Critical (Red)</span>
+                    <i class="ph-fill ph-siren text-red-200 text-xl"></i>
+                </div>
+                <h3 class="text-3xl font-bold text-red-600" id="kpi-red">-</h3>
             </div>
-            <div class="glass-card p-4 border-l-4 border-amber-500">
-                <span class="text-xs font-bold text-amber-700">주의 (Warning)</span>
-                <p class="text-3xl font-bold mt-1 text-amber-600" id="kpi-amber">0</p>
+            <div class="glass-card p-5 border-l-4 border-amber-500">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold text-amber-600 uppercase">Warning (Amber)</span>
+                    <i class="ph-fill ph-warning text-amber-200 text-xl"></i>
+                </div>
+                <h3 class="text-3xl font-bold text-amber-600" id="kpi-amber">-</h3>
             </div>
-            <div class="glass-card p-4 border-l-4 border-green-500">
-                <span class="text-xs font-bold text-green-700">주요 키워드</span>
-                <p class="text-xl font-bold mt-2 text-green-700 truncate" id="kpi-keyword">-</p>
+            <div class="glass-card p-5 border-l-4 border-green-500">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold text-green-600 uppercase">Top Keyword</span>
+                    <i class="ph-fill ph-hash text-green-200 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-green-700 truncate" id="kpi-keyword">-</h3>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <div class="lg:col-span-4 space-y-6">
+                
+                <div class="glass-card p-5 sticky top-20">
+                    <div class="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                        <i class="ph-bold ph-faders text-slate-500"></i>
+                        <h3 class="font-bold text-slate-700 text-sm">데이터 필터링</h3>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 mb-1 block">키워드 선택</label>
+                            <div class="relative">
+                                <select id="filter-keyword" class="w-full bg-slate-50 border border-slate-200 text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer hover:border-blue-400 transition-colors">
+                                    <option value="all">전체 키워드 보기</option>
+                                    </select>
+                                <i class="ph-bold ph-caret-down absolute right-3 top-3 text-slate-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 mb-1 block">제목 검색</label>
+                            <div class="relative">
+                                <i class="ph-bold ph-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
+                                <input type="text" id="filter-search" class="w-full bg-slate-50 border border-slate-200 text-sm rounded-lg pl-9 p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" placeholder="키워드 검색 (예: 해킹)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="glass-card p-5">
-                    <h3 class="font-bold text-slate-700 mb-4 text-sm"><i class="ph-fill ph-faders"></i> 필터 및 검색</h3>
-                    <select id="filter-keyword" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm mb-3 outline-none focus:border-blue-500">
-                        <option value="all">전체 키워드</option>
-                    </select>
-                    <input type="text" id="filter-search" placeholder="제목 검색..." class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-blue-500">
+                    <h3 class="font-bold text-xs text-slate-500 mb-4 flex items-center gap-1 uppercase tracking-wider">
+                        <i class="ph-fill ph-chart-pie-slice"></i> Risk Distribution
+                    </h3>
+                    <div class="h-48 relative">
+                        <canvas id="riskChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card p-5">
+                    <h3 class="font-bold text-xs text-slate-500 mb-4 flex items-center gap-1 uppercase tracking-wider">
+                        <i class="ph-fill ph-trend-up"></i> Daily Trend
+                    </h3>
+                    <div class="h-40 relative">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8">
+                <div class="flex justify-between items-end mb-4 px-1">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        상세 뉴스 리스트
+                        <span id="list-count" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-sm">Total: 0</span>
+                    </h3>
                 </div>
                 
-                <div class="glass-card p-5">
-                    <h3 class="font-bold text-slate-700 mb-4 text-sm"><i class="ph-fill ph-chart-pie-slice"></i> 리스크 비율</h3>
-                    <div class="h-48 relative"><canvas id="riskChart"></canvas></div>
-                </div>
-
-                 <div class="glass-card p-5">
-                    <h3 class="font-bold text-slate-700 mb-4 text-sm"><i class="ph-fill ph-trend-up"></i> 발생 추이</h3>
-                    <div class="h-40 relative"><canvas id="trendChart"></canvas></div>
-                </div>
-            </div>
-
-            <div class="lg:col-span-2">
-                <div class="flex justify-between items-end mb-3">
-                    <h3 class="font-bold text-lg text-slate-800">상세 뉴스 피드</h3>
-                    <span id="list-count" class="text-xs font-bold bg-white px-2 py-1 rounded border shadow-sm">Total: 0</span>
-                </div>
-                <div id="news-list" class="space-y-3"></div>
+                <div id="news-list" class="space-y-3">
+                    </div>
             </div>
         </div>
+        
+        <footer class="mt-12 text-center text-xs text-slate-400 py-8 border-t border-slate-200">
+            <p>&copy; 2025 Security Monitoring Dashboard. Powered by GitHub Pages.</p>
+        </footer>
     </div>
 
     <script>
+        // 1. Python에서 주입된 데이터 로드
         const rawData = {json_data};
         let filteredData = [...rawData];
 
+        // 2. 초기화 함수
         function init() {{
-            const sel = document.getElementById('filter-keyword');
-            const keys = [...new Set(rawData.map(d => d.keyword))].filter(k=>k).sort();
-            keys.forEach(k => {{
-                const opt = document.createElement('option');
-                opt.value = k;
-                opt.textContent = k;
-                sel.appendChild(opt);
-            }});
-            update();
+            populateKeywords();
+            updateDashboard();
         }}
 
-        function update() {{
-            const kVal = document.getElementById('filter-keyword').value;
-            const sVal = document.getElementById('filter-search').value.toLowerCase();
+        // 3. 키워드 필터 옵션 생성
+        function populateKeywords() {{
+            const select = document.getElementById('filter-keyword');
+            // 중복 제거 및 정렬
+            const keywords = [...new Set(rawData.map(d => d.keyword))].filter(k => k).sort();
             
-            filteredData = rawData.filter(d => {{
-                return (kVal === 'all' || d.keyword === kVal) && d.title.toLowerCase().includes(sVal);
+            keywords.forEach(k => {{
+                const option = document.createElement('option');
+                option.value = k;
+                option.textContent = k.toUpperCase(); // 대문자로 표시
+                select.appendChild(option);
+            }});
+        }}
+
+        // 4. 대시보드 업데이트 (필터링 -> 렌더링)
+        function updateDashboard() {{
+            const keywordVal = document.getElementById('filter-keyword').value;
+            const searchVal = document.getElementById('filter-search').value.toLowerCase();
+
+            // 데이터 필터링 로직
+            filteredData = rawData.filter(item => {{
+                const matchKeyword = keywordVal === 'all' || item.keyword === keywordVal;
+                const matchSearch = item.title.toLowerCase().includes(searchVal);
+                return matchKeyword && matchSearch;
             }});
 
-            renderKPI();
+            renderKPIs();
             renderList();
             renderCharts();
         }}
 
-        function renderKPI() {{
-            document.getElementById('kpi-total').textContent = filteredData.length;
-            document.getElementById('kpi-red').textContent = filteredData.filter(d=>d.risk==='RED').length;
-            document.getElementById('kpi-amber').textContent = filteredData.filter(d=>d.risk==='AMBER').length;
+        // 5. KPI 카드 렌더링
+        function renderKPIs() {{
+            document.getElementById('kpi-total').textContent = filteredData.length.toLocaleString();
+            document.getElementById('kpi-red').textContent = filteredData.filter(d => d.risk === 'RED').length.toLocaleString();
+            document.getElementById('kpi-amber').textContent = filteredData.filter(d => d.risk === 'AMBER').length.toLocaleString();
             
-            if(filteredData.length > 0) {{
+            // 최다 등장 키워드 계산
+            if (filteredData.length > 0) {{
                 const counts = {{}};
-                filteredData.forEach(d=> counts[d.keyword] = (counts[d.keyword]||0)+1);
-                document.getElementById('kpi-keyword').textContent = Object.keys(counts).reduce((a,b)=>counts[a]>counts[b]?a:b);
+                filteredData.forEach(d => counts[d.keyword] = (counts[d.keyword] || 0) + 1);
+                const top = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+                document.getElementById('kpi-keyword').textContent = top.toUpperCase();
             }} else {{
                 document.getElementById('kpi-keyword').textContent = "-";
             }}
-            document.getElementById('list-count').textContent = `검색결과: ${{filteredData.length}}건`;
+            
+            document.getElementById('list-count').textContent = `Total: ${{filteredData.length}}건`;
         }}
 
+        // 6. 뉴스 리스트 렌더링 (★ 핵심: 링크 연결 부분)
         function renderList() {{
-            const con = document.getElementById('news-list');
-            con.innerHTML = '';
-            
-            if(filteredData.length === 0) {{
-                con.innerHTML = '<div class="p-12 text-center text-slate-400 bg-white rounded-xl border border-dashed">검색 결과가 없습니다.</div>';
+            const container = document.getElementById('news-list');
+            container.innerHTML = '';
+
+            if (filteredData.length === 0) {{
+                container.innerHTML = `
+                    <div class="py-12 text-center text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                        <i class="ph ph-magnifying-glass text-4xl mb-2 text-slate-300"></i>
+                        <p>조건에 맞는 검색 결과가 없습니다.</p>
+                    </div>`;
                 return;
             }}
 
             filteredData.forEach(item => {{
+                // <a> 태그 생성 (클릭 시 이동)
                 const el = document.createElement('a');
-                el.href = item.link;
-                el.target = '_blank';
-                el.className = 'block glass-card p-5 hover:border-blue-400 group relative no-underline';
-                const badge = `badge-${{item.risk}}`;
+                el.href = item.link;      // 실제 링크 주소
+                el.target = '_blank';     // 새 탭에서 열기
+                el.className = 'block glass-card p-5 hover:border-blue-400 group relative no-underline transition-all hover:-translate-y-1';
+                
+                const badgeClass = `badge-${{item.risk}}`;
                 
                 el.innerHTML = `
                     <div class="flex justify-between items-start gap-4">
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-2 flex-wrap">
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${{badge}}">${{item.risk}}</span>
-                                <span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border">${{item.keyword}}</span>
-                                <span class="text-xs text-slate-400 flex items-center gap-1"><i class="ph-bold ph-calendar"></i> ${{item.date}}</span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase ${{badgeClass}} shadow-sm">
+                                    ${{item.risk}}
+                                </span>
+                                <span class="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                    ${{item.keyword.toUpperCase()}}
+                                </span>
+                                <span class="text-xs text-slate-400 flex items-center gap-1 font-medium font-mono">
+                                    <i class="ph-bold ph-calendar-blank"></i> ${{item.date}}
+                                </span>
                             </div>
-                            <h4 class="font-bold text-slate-800 text-base leading-snug group-hover:text-blue-600 transition-colors">${{item.title}}</h4>
+                            <h4 class="text-base font-bold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug mb-3 pr-8">
+                                ${{item.title}}
+                            </h4>
+                            <div class="flex items-center gap-1 text-xs text-slate-400 truncate font-mono opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="ph-bold ph-link"></i> ${{item.link}}
+                            </div>
                         </div>
-                        <i class="ph-bold ph-arrow-square-out text-slate-300 text-lg group-hover:text-blue-500"></i>
+                        <div class="absolute right-5 top-5">
+                            <i class="ph-bold ph-arrow-up-right text-slate-300 group-hover:text-blue-500 transition-colors text-lg"></i>
+                        </div>
                     </div>
                 `;
-                con.appendChild(el);
+                container.appendChild(el);
             }});
         }}
 
-        let chRisk = null, chTrend = null;
+        // 7. 차트 렌더링
+        let chartRisk = null;
+        let chartTrend = null;
+
         function renderCharts() {{
-            const counts = {{'RED':0, 'AMBER':0, 'GREEN':0}};
-            const dates = {{}};
+            // 데이터 집계
+            const riskCounts = {{ 'RED': 0, 'AMBER': 0, 'GREEN': 0 }};
+            const dateCounts = {{}};
+            
             filteredData.forEach(d => {{
-                if(counts[d.risk]!==undefined) counts[d.risk]++; else counts['GREEN']++;
-                dates[d.date] = (dates[d.date]||0)+1;
+                if(riskCounts[d.risk] !== undefined) riskCounts[d.risk]++;
+                else riskCounts['GREEN']++;
+                
+                dateCounts[d.date] = (dateCounts[d.date] || 0) + 1;
             }});
 
-            // Risk Chart
-            const ctxR = document.getElementById('riskChart').getContext('2d');
-            if(chRisk) chRisk.destroy();
-            chRisk = new Chart(ctxR, {{
+            const sortedDates = Object.keys(dateCounts).sort();
+            const trendData = sortedDates.map(d => dateCounts[d]);
+
+            // [차트 1] Risk Doughnut Chart
+            const ctxRisk = document.getElementById('riskChart').getContext('2d');
+            if(chartRisk) chartRisk.destroy();
+            
+            chartRisk = new Chart(ctxRisk, {{
                 type: 'doughnut',
                 data: {{
                     labels: ['Red', 'Amber', 'Green'],
-                    datasets: [{{ data: [counts['RED'], counts['AMBER'], counts['GREEN']], backgroundColor: ['#ef4444', '#f59e0b', '#22c55e'], borderWidth: 0 }}]
+                    datasets: [{{
+                        data: [riskCounts['RED'], riskCounts['AMBER'], riskCounts['GREEN']],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#22c55e'],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }}]
                 }},
-                options: {{ responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: {{ legend: {{ position: 'right', labels: {{ boxWidth: 10, font: {{ size: 11 }} }} }} }} }}
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {{
+                        legend: {{ position: 'right', labels: {{ boxWidth: 10, usePointStyle: true, font: {{ size: 11 }} }} }}
+                    }}
+                }}
             }});
 
-            // Trend Chart
-            const sortedDates = Object.keys(dates).sort();
-            const ctxT = document.getElementById('trendChart').getContext('2d');
-            if(chTrend) chTrend.destroy();
-            chTrend = new Chart(ctxT, {{
+            // [차트 2] Trend Line Chart
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            if(chartTrend) chartTrend.destroy();
+            
+            chartTrend = new Chart(ctxTrend, {{
                 type: 'line',
                 data: {{
                     labels: sortedDates,
                     datasets: [{{
                         label: '기사 수',
-                        data: sortedDates.map(d=>dates[d]),
+                        data: trendData,
                         borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        backgroundColor: (ctx) => {{
+                            const grad = ctx.chart.ctx.createLinearGradient(0,0,0,150);
+                            grad.addColorStop(0, 'rgba(59,130,246,0.2)');
+                            grad.addColorStop(1, 'rgba(59,130,246,0)');
+                            return grad;
+                        }},
                         fill: true,
                         tension: 0.4,
-                        pointRadius: 2
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        borderWidth: 2
                     }}]
                 }},
                 options: {{
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {{ legend: {{ display: false }} }},
-                    scales: {{ x: {{ display: false }}, y: {{ beginAtZero: true, display: false }} }}
+                    scales: {{
+                        x: {{ display: false }}, // X축 숨김 (깔끔하게)
+                        y: {{ beginAtZero: true, display: false }} // Y축 숨김
+                    }},
+                    interaction: {{ mode: 'index', intersect: false }}
                 }}
             }});
         }}
 
-        document.getElementById('filter-keyword').addEventListener('change', update);
-        document.getElementById('filter-search').addEventListener('input', update);
+        // 이벤트 리스너 등록
+        document.getElementById('filter-keyword').addEventListener('change', updateDashboard);
+        document.getElementById('filter-search').addEventListener('input', updateDashboard);
+
+        // 실행
         init();
     </script>
 </body>
 </html>
 """
 
+# 파일 저장
 with open(output_filename, 'w', encoding='utf-8') as f:
     f.write(html_content)
 
-print(f"✨ 완료! '{output_filename}' 파일이 생성되었습니다.")
-print("1. 생성된 index.html을 깃허브에 업로드하세요.")
-print("2. https://bough38-web.github.io/retention-dashboard/ 에서 확인 가능합니다.")
+print(f"\n✨ 완료! '{output_filename}' 파일이 생성되었습니다.")
+print("1. 이 파일을 깃허브 저장소에 업로드하세요.")
+print("2. 데이터가 정상적으로 표시되고, 카드 클릭 시 링크가 작동하는지 확인하세요.")
