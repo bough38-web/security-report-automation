@@ -1,7 +1,12 @@
 import json
 import os
+import logging
+import zipfile
+import pandas as pd
 from dotenv import load_dotenv
 from config import DATA_FILE
+
+logger = logging.getLogger(__name__)
 
 def setup_environment():
     """환경 변수(.env)를 로드합니다."""
@@ -20,8 +25,9 @@ def load_keywords():
 
 def save_keywords(keywords):
     """키워드 목록을 JSON 파일에 저장합니다."""
-    with open(DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(keywords, f, ensure_ascii=False, indent=4)
+    try:
+        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(keywords, f, ensure_ascii=False, indent=4)
         logger.info("키워드 파일 저장 완료.")
     except Exception as e:
         logger.error(f"키워드 파일 저장 오류: {e}")

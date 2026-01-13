@@ -1,0 +1,8 @@
+requests
+beautifulsoup4
+feedparser
+openai
+python-pptx
+python-dotenv
+pandas
+openpyxl
