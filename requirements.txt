@@ -6,3 +6,4 @@ python-pptx
 python-dotenv
 pandas
 openpyxl
+playwright

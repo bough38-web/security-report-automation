@@ -16,6 +16,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 import requests
 import feedparser
 import openai
+from playwright.sync_api import sync_playwright
 
 from dotenv import load_dotenv
 from config import DATA_FILE, GOOGLE_NEWS_URL, MAX_NEWS_ENTRIES, OPENAI_MODEL, MAX_TOKENS, MAIL_TO, MAIL_CC, MAIL_SUBJECT, PPT_TITLE, RISK_KEYWORDS
@@ -711,12 +712,40 @@ def execute():
         summary_map[keyword] = summary
         time.sleep(1) # 부하 조절
 
-    # 3. PPT 생성
-    ppt_path = os.path.join(os.getcwd(), f"security_report_{datetime.now().strftime('%Y%m%d')}.pptx")
-    make_ppt(summary_map, ppt_path)
-
-    # 4. 웹 대시보드(index.html) 생성
+    # 3. 비용이 드는 PPT 생성 대신, 웹 대시보드(index.html) 우선 생성
     generate_dashboard(all_news_data, summary_map)
-    
-    # 5. 이메일 전송
-    send_email(ppt_path)
+    html_abs_path = os.path.join(os.getcwd(), "index.html")
+    pdf_path = os.path.join(os.getcwd(), f"Security_Report_{datetime.now().strftime('%Y%m%d')}.pdf")
+
+    # 4. Playwright를 이용한 PDF 생성 (Headless Browser)
+    try:
+        print("Generating PDF from Dashboard via Headless Browser...")
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            # 로컬 파일 로드 ('file://' 프로토콜)
+            page.goto(f"file://{html_abs_path}")
+            
+            # 차트 렌더링 대기 (2초)
+            page.wait_for_timeout(2000) 
+            
+            # PDF 스타일 강제 적용 (A4 Single Page)
+            page.evaluate("document.body.classList.add('generating-pdf')")
+            
+            page.pdf(
+                path=pdf_path,
+                format="A4",
+                print_background=True,
+                margin={"top": "0mm", "bottom": "0mm", "left": "0mm", "right": "0mm"}
+            )
+            browser.close()
+        print(f"PDF Generated Successfully: {pdf_path}")
+    except Exception as e:
+        print(f"PDF Generation Failed: {e}")
+        pdf_path = None # 실패 시 메일 발송 스킵 혹은 본문만 전송
+
+    # 5. 이메일 전송 (PDF 첨부)
+    if pdf_path and os.path.exists(pdf_path):
+        send_email(pdf_path)
+    else:
+        print("PDF 파일이 생성되지 않아 이메일을 발송하지 않습니다.")
