@@ -226,7 +226,9 @@ def generate_dashboard(news_data, summary_map):
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div class="card p-6 lg:col-span-2">
                 <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="ph ph-trend-up"></i> 일별 뉴스 트렌드</h3>
-                <canvas id="trendChart" height="250"></canvas>
+                <div class="relative h-72">
+                    <canvas id="trendChart"></canvas>
+                </div>
             </div>
             <div class="card p-6">
                 <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="ph ph-chart-pie-slice"></i> 리스크 분포</h3>
