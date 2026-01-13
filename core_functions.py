@@ -684,6 +684,12 @@ def execute():
         # 1. 뉴스 데이터 수집 및 리스크 분석
         for item in news_items:
             risk = analyze_risk(item['title'])
+
+            # [Filter] KT텔레캅 Exclusion Rule: Exclude High Risk (RED, AMBER) items
+            if keyword == "KT텔레캅" and risk in ["RED", "AMBER"]:
+                print(f"  - Skipped (Negative Filter): {item['title']}")
+                continue
+
             # 날짜 포맷팅
             try:
                 # RSS feed published example: "Mon, 06 Jan 2025 10:00:00 GMT"
