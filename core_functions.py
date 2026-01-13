@@ -529,21 +529,25 @@ def generate_dashboard(news_data, summary_map):
         }}
 
         function downloadPDF() {{
+            window.scrollTo(0, 0); // Ensure we are at the top
             const element = document.getElementById('dashboard-content');
             const opt = {{
-                margin:       [0, 0, 0, 0], // No interaction with margin here, handled by CSS
+                margin:       0,
                 filename:     `Security_Report_${{new Date().toISOString().slice(0,10)}}.pdf`,
                 image:        {{ type: 'jpeg', quality: 0.98 }},
-                html2canvas:  {{ scale: 2, useCORS: true }},
+                html2canvas:  {{ scale: 2, useCORS: true, scrollY: 0 }},
                 jsPDF:        {{ unit: 'mm', format: 'a4', orientation: 'portrait' }}
             }};
             
             // Temporary styles for clean PDF print
             document.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
             
-            html2pdf().set(opt).from(element).save().then(() => {{
-                document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
-            }});
+            // Wait slightly for DOM to update
+            setTimeout(() => {{
+                html2pdf().set(opt).from(element).save().then(() => {{
+                    document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
+                }});
+            }}, 100);
         }}
 
         // Run
