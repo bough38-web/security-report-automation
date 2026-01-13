@@ -151,225 +151,369 @@ def analyze_risk(title):
     return "GREEN"
 
 def generate_dashboard(news_data, summary_map):
-    """수집된 데이터로 index.html 대시보드를 생성합니다."""
+    """수집된 데이터로 index.html 대시보드를 생성합니다. (v2.0: One-Page PPT Style, Smart Filter, PDF Export)"""
     json_data = json.dumps(news_data, ensure_ascii=False)
     
     summary_html = ""
     for keyword, text in summary_map.items():
-        summary_html += f"<strong>• {keyword}:</strong> {text}<br>"
+        summary_html += f"<div class='mb-2'><span class='font-bold text-blue-700'>• {keyword}</span>: <span class='text-gray-700'>{text}</span></div>"
 
-    # HTML 템플릿 (축약된 형태가 아닌 전체 포함)
+    # HTML 템플릿 (v2.0 Professional PPT Style)
     html_content = f"""
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>보안/안전 뉴스 분석 대시보드</title>
+    <title>Security Insight Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        body {{ font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; background-color: #f3f4f6; }}
-        .card {{ background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: transform 0.2s; }}
-        .card:hover {{ transform: translateY(-2px); }}
-        .risk-badge-RED {{ background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }}
-        .risk-badge-AMBER {{ background-color: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }}
-        .risk-badge-GREEN {{ background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }}
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+        body {{ font-family: 'Pretendard', sans-serif; background-color: #eef2f6; -webkit-print-color-adjust: exact; }}
+        .a4-page {{ 
+            width: 100%; 
+            max-width: 210mm; 
+            margin: 0 auto; 
+            background: white; 
+            min-height: 297mm; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            padding: 10mm;
+            position: relative;
+        }}
+        .btn-filter {{ transition: all 0.2s; }}
+        .btn-filter.active {{ background-color: #1e3a8a; color: white; border-color: #1e3a8a; }}
+        .btn-filter:hover:not(.active) {{ background-color: #eff6ff; }}
+        
+        /* Scrollbar mostly hidden for clean look */
+        ::-webkit-scrollbar {{ width: 6px; }}
+        ::-webkit-scrollbar-track {{ background: transparent; }}
+        ::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 3px; }}
     </style>
 </head>
-<body class="text-gray-800">
-    <nav class="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
+<body class="py-8">
+    
+    <!-- Control Bar -->
+    <div class="fixed top-4 right-4 z-50 flex gap-2 no-print">
+        <button onclick="downloadPDF()" class="bg-blue-900 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-800 flex items-center gap-2 font-medium">
+            <i class="ph ph-download-simple"></i> Download PDF
+        </button>
+    </div>
+
+    <!-- Main Dashboard Area (Target for PDF) -->
+    <div id="dashboard-content" class="a4-page rounded-xl">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
             <div class="flex items-center gap-3">
-                <i class="ph ph-shield-check text-3xl text-blue-400"></i>
-                <div>
-                    <h1 class="text-xl font-bold">Security Analysis Dashboard</h1>
-                    <p class="text-xs text-slate-400">보안/안전 뉴스 모니터링 시스템</p>
-                </div>
-            </div>
-            <div class="hidden md:flex gap-4 text-sm">
-                <span class="px-3 py-1 bg-slate-800 rounded-full">데이터 업데이트: {datetime.now().strftime('%Y-%m-%d %H:%M')}</span>
-            </div>
-        </div>
-    </nav>
-    <div class="container mx-auto p-4 max-w-7xl">
-        <div class="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-2xl p-6 text-white mb-8 shadow-xl">
-            <div class="flex items-start gap-4">
-                <div class="p-3 bg-white/10 rounded-lg">
-                    <i class="ph ph-robot text-3xl text-yellow-300"></i>
+                <div class="bg-slate-900 text-white p-2 rounded-lg">
+                    <i class="ph ph-shield-check text-3xl"></i>
                 </div>
                 <div>
-                    <h2 class="text-lg font-bold mb-2 flex items-center gap-2">AI 임원 요약 리포트 <span class="text-xs font-normal bg-blue-600 px-2 py-0.5 rounded">Auto-Generated</span></h2>
-                    <p class="text-blue-100 leading-relaxed text-sm md:text-base">{summary_html}</p>
+                    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">SECURITY INSIGHT PRO</h1>
+                    <p class="text-xs text-slate-500 font-medium tracking-wide">INTELLIGENCE DASHBOARD | {datetime.now().strftime('%Y-%m-%d')}</p>
                 </div>
             </div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div class="card p-5 border-l-4 border-blue-500">
-                <p class="text-gray-500 text-sm font-medium">총 분석 기사</p>
-                <p class="text-3xl font-bold mt-1" id="total-count">-</p>
+            <div class="text-right">
+                <div class="flex items-center gap-2 justify-end">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span class="text-xs font-bold text-green-700 uppercase">Live System</span>
+                </div>
+                <p class="text-[10px] text-gray-400 mt-1">CONFIDENTIAL REPORT</p>
             </div>
-            <div class="card p-5 border-l-4 border-red-500">
-                <p class="text-gray-500 text-sm font-medium">위기(Critical) 감지</p>
-                <p class="text-3xl font-bold mt-1 text-red-600" id="critical-count">-</p>
+        </header>
+
+        <!-- Executive Summary -->
+        <section class="mb-6">
+            <div class="bg-slate-50 rounded-lg p-5 border border-slate-200">
+                <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="ph ph-robot text-blue-600"></i> AI Executive Briefing
+                    <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Analysis Read</span>
+                </h3>
+                <div class="text-xs md:text-sm text-slate-700 leading-relaxed">
+                    {summary_html}
+                </div>
             </div>
-            <div class="card p-5 border-l-4 border-yellow-500">
-                <p class="text-gray-500 text-sm font-medium">주의(Warning) 감지</p>
-                <p class="text-3xl font-bold mt-1 text-yellow-600" id="warning-count">-</p>
+        </section>
+
+        <!-- KPIs -->
+        <section class="grid grid-cols-4 gap-4 mb-6">
+            <div class="p-4 rounded-lg border border-blue-100 bg-blue-50/50">
+                <p class="text-xs text-blue-500 font-bold uppercase mb-1">Total News</p>
+                <p class="text-3xl font-bold text-slate-800" id="total-count">-</p>
             </div>
-            <div class="card p-5 border-l-4 border-green-500">
-                <p class="text-gray-500 text-sm font-medium">최다 언급 키워드</p>
-                <p class="text-2xl font-bold mt-1 text-green-700 truncate" id="top-keyword">-</p>
+            <div class="p-4 rounded-lg border border-red-100 bg-red-50/50">
+                <p class="text-xs text-red-500 font-bold uppercase mb-1">Critical Risk</p>
+                <p class="text-3xl font-bold text-red-700" id="critical-count">-</p>
             </div>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div class="card p-6 lg:col-span-2">
-                <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="ph ph-trend-up"></i> 일별 뉴스 트렌드</h3>
-                <div class="relative h-72">
+            <div class="p-4 rounded-lg border border-amber-100 bg-amber-50/50">
+                <p class="text-xs text-amber-500 font-bold uppercase mb-1">Warning</p>
+                <p class="text-3xl font-bold text-amber-700" id="warning-count">-</p>
+            </div>
+            <div class="p-4 rounded-lg border border-green-100 bg-green-50/50">
+                <p class="text-xs text-green-600 font-bold uppercase mb-1">Top Keyword</p>
+                <p class="text-xl font-bold text-green-800 truncate" id="top-keyword">-</p>
+            </div>
+        </section>
+
+        <!-- Charts Area -->
+        <section class="grid grid-cols-3 gap-6 mb-6">
+            <div class="col-span-2 border border-gray-100 rounded-xl p-4 shadow-sm bg-white">
+                <h3 class="text-xs font-bold text-gray-500 uppercase mb-4">Daily Trend Analysis</h3>
+                <div class="relative h-48 w-full">
                     <canvas id="trendChart"></canvas>
                 </div>
             </div>
-            <div class="card p-6">
-                <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="ph ph-chart-pie-slice"></i> 리스크 분포</h3>
-                <div class="relative h-64"><canvas id="riskChart"></canvas></div>
-            </div>
-        </div>
-        <div class="flex flex-col md:flex-row gap-6">
-            <div class="w-full md:w-64 shrink-0 space-y-4">
-                <div class="card p-5 sticky top-24">
-                    <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">필터링 옵션</h3>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-600 mb-1">키워드 선택</label>
-                        <select id="keyword-filter" class="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"><option value="all">전체 보기</option></select>
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-600 mb-1">리스크 레벨</label>
-                        <select id="risk-filter" class="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="all">전체 등급</option>
-                            <option value="RED">🚨 위기 (RED)</option>
-                            <option value="AMBER">⚠️ 주의 (AMBER)</option>
-                            <option value="GREEN">✅ 양호 (GREEN)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">검색어</label>
-                        <input type="text" id="search-input" placeholder="제목 검색..." class="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
+            <div class="border border-gray-100 rounded-xl p-4 shadow-sm bg-white">
+                <h3 class="text-xs font-bold text-gray-500 uppercase mb-4">Risk Distribution</h3>
+                <div class="relative h-48 w-full flex justify-center">
+                    <canvas id="riskChart"></canvas>
                 </div>
             </div>
-            <div class="flex-1">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-xl text-gray-800">상세 뉴스 리스트</h3>
-                    <span id="filtered-count" class="text-sm text-gray-500">Total: 0건</span>
+        </section>
+
+        <!-- Smart Filter (Buttons) -->
+        <section class="mb-4 no-print">
+            <div class="flex flex-wrap gap-2 items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div class="flex items-center gap-2 mr-4">
+                    <i class="ph ph-funnel text-gray-400"></i>
+                    <span class="text-xs font-bold text-gray-500">SMART FILTER</span>
                 </div>
-                <div id="news-container" class="space-y-3"></div>
+                
+                <!-- Risk Buttons -->
+                <div class="flex gap-1" id="risk-filters">
+                    <button class="btn-filter active px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="all">All Risks</button>
+                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="RED">Critical</button>
+                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="AMBER">Warning</button>
+                </div>
+                
+                <div class="h-4 w-px bg-gray-300 mx-2"></div>
+
+                <!-- Keyword Buttons (Dynamic) -->
+                <div class="flex gap-1 flex-wrap" id="keyword-filters">
+                    <button class="btn-filter active px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="all">All Topics</button>
+                </div>
             </div>
-        </div>
+        </section>
+
+        <!-- Data List -->
+        <section>
+            <div class="flex justify-between items-end mb-3">
+                <h3 class="text-sm font-bold text-slate-800">Intelligence Feed</h3>
+                <span class="text-xs text-slate-400" id="filtered-count">Total: 0</span>
+            </div>
+            <div id="news-container" class="grid grid-cols-2 gap-3">
+                <!-- Cards will be injected here -->
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-8 pt-4 border-t border-gray-100 flex justify-between items-center text-[10px] text-gray-400">
+            <p>Generated by Security Report Automation System</p>
+            <p>CONFIDENTIAL | INTERNAL USE ONLY</p>
+        </footer>
     </div>
+
     <script>
         const rawData = {json_data};
         let currentData = [...rawData];
-        const container = document.getElementById('news-container');
-        const totalCountEl = document.getElementById('total-count');
-        const criticalCountEl = document.getElementById('critical-count');
-        const warningCountEl = document.getElementById('warning-count');
-        const topKeywordEl = document.getElementById('top-keyword');
-        const filteredCountEl = document.getElementById('filtered-count');
-        const keywordFilter = document.getElementById('keyword-filter');
-        const riskFilter = document.getElementById('risk-filter');
-        const searchInput = document.getElementById('search-input');
+
+        // Chart Instances
+        let trendChart = null;
+        let riskChart = null;
+
+        // Current Filter State
+        let state = {{ risk: 'all', keyword: 'all' }};
+
+        function init() {{
+            initFilters();
+            renderAll();
+        }}
+
         function initFilters() {{
-            const keywords = [...new Set(rawData.map(item => item.keyword))].filter(k => k);
+            // Render Keyword Buttons
+            const keywords = [...new Set(rawData.map(d => d.keyword))].filter(k => k);
+            const container = document.getElementById('keyword-filters');
             keywords.forEach(k => {{
-                const option = document.createElement('option');
-                option.value = k;
-                option.textContent = k.toUpperCase();
-                keywordFilter.appendChild(option);
+                const btn = document.createElement('button');
+                btn.className = 'btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium';
+                btn.textContent = k;
+                btn.dataset.val = k;
+                btn.onclick = () => setFilter('keyword', k);
+                container.appendChild(btn);
+            }});
+
+            // Attach Risk Button Events
+            document.querySelectorAll('#risk-filters button').forEach(btn => {{
+                btn.onclick = () => setFilter('risk', btn.dataset.val);
             }});
         }}
-        function renderKPIs(data) {{
-            totalCountEl.textContent = data.length.toLocaleString();
-            criticalCountEl.textContent = data.filter(i => i.risk === 'RED').length.toLocaleString();
-            warningCountEl.textContent = data.filter(i => i.risk === 'AMBER').length.toLocaleString();
-            if(data.length === 0) {{ topKeywordEl.textContent = "-"; return; }}
-            const counts = {{}};
-            data.forEach(x => {{ counts[x.keyword] = (counts[x.keyword] || 0) + 1; }});
-            const top = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
-            topKeywordEl.textContent = top.toUpperCase();
+
+        function setFilter(type, val) {{
+            state[type] = val;
+            
+            // Update UI Active State
+            document.querySelectorAll(`#${{type}}-filters button`).forEach(b => {{
+                if(b.dataset.val === val) b.classList.add('active');
+                else b.classList.remove('active');
+            }});
+
+            filterData();
         }}
-        function renderList(data) {{
-            container.innerHTML = '';
-            filteredCountEl.textContent = `Total: ${{data.length}}건`;
-            if (data.length === 0) {{ container.innerHTML = '<div class="p-8 text-center text-gray-400">검색 결과가 없습니다.</div>'; return; }}
-            data.forEach(item => {{
+
+        function filterData() {{
+            currentData = rawData.filter(item => {{
+                const matchKey = state.keyword === 'all' || item.keyword === state.keyword;
+                const matchRisk = state.risk === 'all' || item.risk === state.risk;
+                return matchKey && matchRisk;
+            }});
+            renderAll();
+        }}
+
+        function renderAll() {{
+            renderKPIs();
+            renderCharts();
+            renderList();
+        }}
+
+        function renderKPIs() {{
+            document.getElementById('total-count').innerText = currentData.length;
+            document.getElementById('critical-count').innerText = currentData.filter(i => i.risk === 'RED').length;
+            document.getElementById('warning-count').innerText = currentData.filter(i => i.risk === 'AMBER').length;
+            
+            if (currentData.length > 0) {{
+                const counts = {{}};
+                currentData.forEach(x => counts[x.keyword] = (counts[x.keyword] || 0) + 1);
+                const top = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+                document.getElementById('top-keyword').innerText = top;
+            }} else {{
+                document.getElementById('top-keyword').innerText = "-";
+            }}
+            document.getElementById('filtered-count').innerText = `Total: ${{currentData.length}}`;
+        }}
+
+        function renderCharts() {{
+            // Trend
+            const dates = {{}};
+            currentData.forEach(i => dates[i.date] = (dates[i.date]||0)+1);
+            const sortedDates = Object.keys(dates).sort();
+            
+            const ctxTrend = document.getElementById('trendChart');
+            if(trendChart) trendChart.destroy();
+            trendChart = new Chart(ctxTrend, {{
+                type: 'line',
+                data: {{
+                    labels: sortedDates,
+                    datasets: [{{
+                        data: sortedDates.map(d => dates[d]),
+                        borderColor: '#1e3a8a',
+                        backgroundColor: 'rgba(30, 58, 138, 0.05)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 2,
+                        fill: true
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{ legend: {{ display: false }} }},
+                    scales: {{ 
+                        x: {{ grid: {{ display: false }}, ticks: {{ font: {{ size: 9 }} }} }},
+                        y: {{ beginAtZero: true, grid: {{ display: false }}, ticks: {{ display: false }} }}
+                    }}
+                }}
+            }});
+
+            // Risk
+            const riskCounts = {{ RED:0, AMBER:0, GREEN:0 }};
+            currentData.forEach(i => riskCounts[i.risk] = (riskCounts[i.risk]||0)+1);
+            
+            const ctxRisk = document.getElementById('riskChart');
+            if(riskChart) riskChart.destroy();
+            riskChart = new Chart(ctxRisk, {{
+                type: 'doughnut',
+                data: {{
+                    labels: ['Crit', 'Warn', 'Safe'],
+                    datasets: [{{
+                        data: [riskCounts.RED, riskCounts.AMBER, riskCounts.GREEN],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {{ 
+                        legend: {{ position: 'right', labels: {{ boxWidth: 10, font: {{ size: 10 }} }} }} 
+                    }}
+                }}
+            }});
+        }}
+
+        function renderList() {{
+            const div = document.getElementById('news-container');
+            div.innerHTML = '';
+            
+            // Show only top 8 items to fit on page (or scrollable if needed, but intended for single page)
+            // For PDF purposes, we allow it to grow, but visually we want compact.
+            // Let's list all but styled compactly.
+            
+            if (currentData.length === 0) {{
+                div.innerHTML = '<div class="col-span-2 text-center text-gray-400 py-8 text-sm">No data available</div>';
+                return;
+            }}
+
+            currentData.forEach(item => {{
                 const el = document.createElement('div');
-                el.className = 'card p-4 hover:bg-gray-50 cursor-pointer group';
+                el.className = 'border border-gray-100 rounded-lg p-3 bg-white hover:border-blue-300 transition-colors cursor-pointer group shadow-sm flex flex-col justify-between h-full';
                 el.onclick = () => window.open(item.link, '_blank');
-                const riskClass = `risk-badge-${{item.risk}}` || 'risk-badge-GREEN';
+                
+                const badgeColor = item.risk === 'RED' ? 'bg-red-50 text-red-700 border-red-100' :
+                                   item.risk === 'AMBER' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                   'bg-green-50 text-green-700 border-green-100';
+
                 el.innerHTML = `
-                    <div class="flex justify-between items-start gap-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-xs font-bold px-2 py-0.5 rounded border uppercase ${{riskClass}}">${{item.risk}}</span>
-                                <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">${{item.keyword.toUpperCase()}}</span>
-                                <span class="text-xs text-gray-400">${{item.date}}</span>
-                            </div>
-                            <h4 class="font-bold text-gray-800 group-hover:text-blue-600 transition-colors leading-snug">${{item.title}}</h4>
+                    <div>
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${{badgeColor}}">${{item.risk}}</span>
+                            <span class="text-[10px] text-gray-400">${{item.date}}</span>
                         </div>
-                        <i class="ph ph-arrow-square-out text-gray-300 group-hover:text-blue-500"></i>
+                        <h4 class="text-sm font-bold text-slate-800 leading-snug group-hover:text-blue-700 mb-1 line-clamp-2">${{item.title}}</h4>
+                    </div>
+                    <div class="flex justify-between items-end mt-2">
+                        <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${{item.keyword}}</span>
                     </div>
                 `;
-                container.appendChild(el);
+                div.appendChild(el);
             }});
         }}
-        let trendChartInstance = null;
-        let riskChartInstance = null;
-        function renderCharts(data) {{
-            const dateCounts = {{}};
-            const riskCounts = {{ 'RED': 0, 'AMBER': 0, 'GREEN': 0 }};
-            data.forEach(item => {{
-                const d = item.date;
-                dateCounts[d] = (dateCounts[d] || 0) + 1;
-                if (riskCounts[item.risk] !== undefined) {{ riskCounts[item.risk]++; }} else {{ riskCounts['GREEN']++; }}
-            }});
-            const sortedDates = Object.keys(dateCounts).sort();
-            const trendData = sortedDates.map(d => dateCounts[d]);
-            const ctxTrend = document.getElementById('trendChart').getContext('2d');
-            if (trendChartInstance) trendChartInstance.destroy();
-            trendChartInstance = new Chart(ctxTrend, {{
-                type: 'line',
-                data: {{ labels: sortedDates, datasets: [{{ label: '일별 기사량', data: trendData, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.3, fill: true }}] }},
-                options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }}, scales: {{ y: {{ beginAtZero: true, grid: {{ display: false }} }}, x: {{ grid: {{ display: false }} }} }} }}
-            }});
-            const ctxRisk = document.getElementById('riskChart').getContext('2d');
-            if (riskChartInstance) riskChartInstance.destroy();
-            riskChartInstance = new Chart(ctxRisk, {{
-                type: 'doughnut',
-                data: {{ labels: ['위기 (Red)', '주의 (Amber)', '양호 (Green)'], datasets: [{{ data: [riskCounts['RED'], riskCounts['AMBER'], riskCounts['GREEN']], backgroundColor: ['#ef4444', '#f59e0b', '#22c55e'], borderWidth: 0 }}] }},
-                options: {{ responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: {{ legend: {{ position: 'right' }} }} }}
+
+        function downloadPDF() {{
+            const element = document.getElementById('dashboard-content');
+            const opt = {{
+                margin:       [0, 0, 0, 0], // No interaction with margin here, handled by CSS
+                filename:     `Security_Report_${{new Date().toISOString().slice(0,10)}}.pdf`,
+                image:        {{ type: 'jpeg', quality: 0.98 }},
+                html2canvas:  {{ scale: 2, useCORS: true }},
+                jsPDF:        {{ unit: 'mm', format: 'a4', orientation: 'portrait' }}
+            }};
+            
+            // Temporary styles for clean PDF print
+            document.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
+            
+            html2pdf().set(opt).from(element).save().then(() => {{
+                document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
             }});
         }}
-        function filterData() {{
-            const keyVal = keywordFilter.value;
-            const riskVal = riskFilter.value;
-            const searchVal = searchInput.value.toLowerCase();
-            const filtered = rawData.filter(item => {{
-                const matchKey = keyVal === 'all' || item.keyword === keyVal;
-                const matchRisk = riskVal === 'all' || item.risk === riskVal;
-                const matchSearch = item.title.toLowerCase().includes(searchVal);
-                return matchKey && matchRisk && matchSearch;
-            }});
-            currentData = filtered;
-            renderKPIs(currentData);
-            renderList(currentData);
-            renderCharts(currentData);
-        }}
-        keywordFilter.addEventListener('change', filterData);
-        riskFilter.addEventListener('change', filterData);
-        searchInput.addEventListener('input', filterData);
-        initFilters();
-        filterData();
+
+        // Run
+        init();
+
     </script>
 </body>
 </html>
