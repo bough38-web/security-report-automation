@@ -187,6 +187,12 @@ def generate_dashboard(news_data, summary_map):
         .btn-filter.active {{ background-color: #1e3a8a; color: white; border-color: #1e3a8a; }}
         .btn-filter:hover:not(.active) {{ background-color: #eff6ff; }}
         
+        /* PDF Generation Overrides */
+        body.generating-pdf .no-print {{ display: none !important; }}
+        body.generating-pdf .a4-page {{ margin: 0 !important; box-shadow: none !important; border: none !important; width: 100% !important; max-width: none !important; }}
+        body.generating-pdf * {{ transform: none !important; transition: none !important; box-shadow: none !important; }}
+        body.generating-pdf ::-webkit-scrollbar {{ display: none; }}
+        
         /* Scrollbar mostly hidden for clean look */
         ::-webkit-scrollbar {{ width: 6px; }}
         ::-webkit-scrollbar-track {{ background: transparent; }}
@@ -532,7 +538,9 @@ def generate_dashboard(news_data, summary_map):
         }}
 
         function downloadPDF() {{
-            window.scrollTo(0, 0); // Ensure we are at the top
+            window.scrollTo(0, 0);
+            document.body.classList.add('generating-pdf');
+            
             const element = document.getElementById('dashboard-content');
             const opt = {{
                 margin:       0,
@@ -542,15 +550,11 @@ def generate_dashboard(news_data, summary_map):
                 jsPDF:        {{ unit: 'mm', format: 'a4', orientation: 'portrait' }}
             }};
             
-            // Temporary styles for clean PDF print
-            document.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
-            
-            // Wait slightly for DOM to update
             setTimeout(() => {{
                 html2pdf().set(opt).from(element).save().then(() => {{
-                    document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
+                    document.body.classList.remove('generating-pdf');
                 }});
-            }}, 100);
+            }}, 500);
         }}
 
         async function triggerUpdate() {{
