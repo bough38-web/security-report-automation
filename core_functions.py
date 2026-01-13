@@ -226,6 +226,19 @@ def generate_dashboard(news_data, summary_map):
         </button>
     </div>
 
+    <!-- Password Modal -->
+    <div id="pwd-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center no-print">
+        <div class="bg-white rounded-lg p-6 w-80 shadow-2xl">
+            <h3 class="font-bold text-lg mb-4 text-gray-800">Administrator Access</h3>
+            <p class="text-sm text-gray-600 mb-2">Enter admin password:</p>
+            <input type="password" id="admin-pwd-input" class="w-full p-2 border rounded mb-4 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Password">
+            <div class="flex justify-end gap-2">
+                <button onclick="closePwdModal()" class="px-3 py-1 text-sm text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
+                <button onclick="submitPwd()" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Dashboard Area (Target for PDF) -->
     <div id="dashboard-content" class="a4-page rounded-xl">
         
@@ -572,10 +585,37 @@ def generate_dashboard(news_data, summary_map):
             }}, 500);
         }}
 
+        let pwdResolve = null;
+
+        function showPwdModal() {{
+            return new Promise((resolve) => {{
+                pwdResolve = resolve;
+                const modal = document.getElementById('pwd-modal');
+                const input = document.getElementById('admin-pwd-input');
+                modal.classList.remove('hidden');
+                input.value = '';
+                input.focus();
+                
+                // Enter key support
+                input.onkeyup = (e) => {{ if(e.key === 'Enter') submitPwd(); }};
+            }});
+        }}
+
+        function closePwdModal() {{
+            document.getElementById('pwd-modal').classList.add('hidden');
+            if (pwdResolve) pwdResolve(null);
+        }}
+
+        function submitPwd() {{
+            const val = document.getElementById('admin-pwd-input').value;
+            document.getElementById('pwd-modal').classList.add('hidden');
+            if (pwdResolve) pwdResolve(val);
+        }}
+
         async function triggerUpdate() {{
-            const pwd = prompt("관리자 암호를 입력하세요:");
+            const pwd = await showPwdModal();
             if (pwd !== "3867") {{
-                if (pwd) alert("암호가 일치하지 않습니다.");
+                if (pwd !== null) alert("암호가 일치하지 않습니다."); // Only alert if not cancelled
                 return;
             }}
 
