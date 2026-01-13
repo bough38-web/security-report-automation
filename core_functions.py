@@ -152,14 +152,14 @@ def analyze_risk(title):
     return "GREEN"
 
 def generate_dashboard(news_data, summary_map):
-    """수집된 데이터로 index.html 대시보드를 생성합니다. (v2.0: One-Page PPT Style, Smart Filter, PDF Export)"""
+    """수집된 데이터로 index.html 대시보드를 생성합니다. (v3.0: Left Sidebar Layout)"""
     json_data = json.dumps(news_data, ensure_ascii=False)
     
     summary_html = ""
     for keyword, text in summary_map.items():
         summary_html += f"<div class='mb-2'><span class='font-bold text-blue-700'>• {keyword}</span>: <span class='text-gray-700'>{text}</span></div>"
 
-    # HTML 템플릿 (v2.0 Professional PPT Style)
+    # HTML 템플릿 (v3.0 Sidebar Layout)
     html_content = f"""
 <!DOCTYPE html>
 <html lang="ko">
@@ -174,6 +174,7 @@ def generate_dashboard(news_data, summary_map):
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
         body {{ font-family: 'Pretendard', sans-serif; background-color: #eef2f6; -webkit-print-color-adjust: exact; }}
+        
         .a4-page {{ 
             width: 100%; 
             max-width: 210mm; 
@@ -181,51 +182,79 @@ def generate_dashboard(news_data, summary_map):
             background: white; 
             min-height: 297mm; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
-            padding: 10mm;
+            display: flex; /* Sidebar Layout */
+            overflow: hidden;
             position: relative;
         }}
-        .btn-filter {{ transition: all 0.2s; }}
-        .btn-filter.active {{ background-color: #1e3a8a; color: white; border-color: #1e3a8a; }}
-        .btn-filter:hover:not(.active) {{ background-color: #eff6ff; }}
+
+        /* Left Sidebar Styling */
+        .sidebar {{
+            width: 260px;
+            background-color: #0f172a; /* Slate 900 */
+            color: white;
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }}
+
+        /* Main Content Styling */
+        .main-content {{
+            flex: 1;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+        }}
+
+        /* Filter Buttons (Vertical) */
+        .btn-filter {{ 
+            width: 100%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem; 
+            margin-bottom: 0.25rem;
+            border-radius: 0.5rem; 
+            font-size: 0.75rem;
+            transition: all 0.2s;
+            border: 1px solid #1e293b;
+            color: #94a3b8;
+            background: rgba(255,255,255,0.05);
+        }}
+        .btn-filter:hover {{ background: rgba(255,255,255,0.1); color: white; }}
+        .btn-filter.active {{ 
+            background: #2563eb; 
+            color: white; 
+            border-color: #2563eb; 
+            font-weight: 600; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }}
         
-        /* PDF Generation Overrides */
+        /* Section Divider in Sidebar */
+        .sidebar-divider {{ height: 1px; background: #1e293b; margin: 1.5rem 0; }}
+        .sidebar-title {{ font-size: 0.7rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em; }}
+
         /* PDF Generation Overrides */
         body.generating-pdf .no-print {{ display: none !important; }}
         body.generating-pdf .a4-page {{ 
             margin: 0 !important; 
-            padding: 10mm !important;
             width: 210mm !important; 
             height: 297mm !important; /* Force A4 Height */
-            max-height: 297mm !important;
-            overflow: hidden !important; /* Crop overflow */
+            overflow: hidden !important; 
             box-shadow: none !important; 
             border: none !important; 
         }}
         /* Hide lower part of news list if it overflows */
         body.generating-pdf #news-container {{
-            max-height: 110mm !important;
+            max-height: 100mm !important; /* Adjusted for layout */
             overflow: hidden !important;
         }}
         body.generating-pdf * {{ transform: none !important; transition: none !important; box-shadow: none !important; }}
         body.generating-pdf ::-webkit-scrollbar {{ display: none; }}
-        
-        /* Scrollbar mostly hidden for clean look */
-        ::-webkit-scrollbar {{ width: 6px; }}
-        ::-webkit-scrollbar-track {{ background: transparent; }}
-        ::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 3px; }}
     </style>
 </head>
 <body class="py-8">
-    
-    <!-- Control Bar -->
-    <div class="fixed top-4 right-4 z-50 flex gap-2 no-print">
-        <button onclick="triggerUpdate()" class="bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-slate-700 flex items-center gap-2 font-medium border border-slate-600 transition-colors">
-            <i class="ph ph-arrows-clockwise"></i> Update Data
-        </button>
-        <button onclick="downloadPDF()" class="bg-blue-900 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-800 flex items-center gap-2 font-medium transition-colors">
-            <i class="ph ph-download-simple"></i> Download PDF
-        </button>
-    </div>
 
     <!-- Password Modal -->
     <div id="pwd-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center no-print">
@@ -241,127 +270,151 @@ def generate_dashboard(news_data, summary_map):
     </div>
 
     <!-- Main Dashboard Area (Target for PDF) -->
-    <div id="dashboard-content" class="a4-page rounded-xl">
+    <div id="dashboard-content" class="a4-page rounded-xl overflow-hidden">
         
-        <!-- Header -->
-        <header class="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
-            <div class="flex items-center gap-3">
-                <div class="bg-slate-900 text-white p-2 rounded-lg">
-                    <i class="ph ph-shield-check text-3xl"></i>
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar">
+            <!-- Brand -->
+            <div class="mb-8">
+                <div class="flex items-center gap-2 mb-1">
+                    <i class="ph-fill ph-shield-check text-2xl text-blue-400"></i>
+                    <h1 class="text-lg font-bold tracking-tight text-white">Insight Pro</h1>
                 </div>
+                <p class="text-[10px] text-slate-400">Security Intelligence Dashboard</p>
+            </div>
+
+            <!-- Controls (Update/PDF) -->
+            <div class="mb-6 grid grid-cols-1 gap-2 no-print">
+                 <button onclick="triggerUpdate()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs rounded border border-slate-700 transition-colors flex items-center justify-center gap-2">
+                    <i class="ph ph-arrows-clockwise"></i> Update Data
+                </button>
+                <button onclick="downloadPDF()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors flex items-center justify-center gap-2 font-semibold shadow-lg shadow-blue-900/20">
+                    <i class="ph ph-download-simple"></i> Download PDF
+                </button>
+            </div>
+            
+            <!-- Filters -->
+            <div class="no-print">
+                <!-- Date -->
+                <div class="mb-4">
+                    <h4 class="sidebar-title">Time Range</h4>
+                    <div id="date-filters">
+                        <button class="btn-filter" data-val="today"><span>Today</span></button>
+                        <button class="btn-filter" data-val="3d"><span>3 Days</span></button>
+                        <button class="btn-filter active" data-val="7d"><span>7 Days</span></button>
+                        <button class="btn-filter" data-val="all"><span>All Time</span></button>
+                    </div>
+                </div>
+
+                <div class="sidebar-divider"></div>
+
+                <!-- Risk -->
+                <div class="mb-4">
+                    <h4 class="sidebar-title">Risk Level</h4>
+                    <div id="risk-filters">
+                        <button class="btn-filter active" data-val="all"><span>All Risks</span> <i class="ph ph-check"></i></button>
+                        <button class="btn-filter" data-val="RED"><span class="text-red-400">Critical</span> <i class="ph-fill ph-warning-circle text-red-500"></i></button>
+                        <button class="btn-filter" data-val="AMBER"><span class="text-amber-400">Warning</span> <i class="ph-fill ph-warning text-amber-500"></i></button>
+                    </div>
+                </div>
+
+                <div class="sidebar-divider"></div>
+
+                <!-- Keywords -->
                 <div>
-                    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">SECURITY INSIGHT PRO</h1>
-                    <p class="text-xs text-slate-500 font-medium tracking-wide">INTELLIGENCE DASHBOARD | {datetime.now().strftime('%Y-%m-%d')}</p>
+                    <h4 class="sidebar-title">Topics</h4>
+                    <div id="keyword-filters" class="max-h-[300px] overflow-y-auto pr-1">
+                        <button class="btn-filter active" data-val="all"><span>All Topics</span></button>
+                        <!-- Dynamic Keywords -->
+                    </div>
                 </div>
             </div>
-            <div class="text-right">
-                <div class="flex items-center gap-2 justify-end">
+
+            <!-- Footer Info -->
+            <div class="mt-auto pt-6 text-[9px] text-slate-500">
+                <p>Last Updated:</p>
+                <p class="font-mono text-slate-400">{datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+                <p class="mt-2">v3.0.1 Stable</p>
+            </div>
+        </aside>
+
+        <!-- RIGHT MAIN CONTENT -->
+        <main class="main-content">
+            
+            <!-- Header -->
+            <header class="flex justify-between items-end border-b border-gray-100 pb-4 mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900 leading-none mb-1">Security Executive Report</h2>
+                    <p class="text-xs text-gray-500">Daily Intelligence Briefing & Risk Assessment</p>
+                </div>
+                <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span class="text-xs font-bold text-green-700 uppercase">Live System</span>
+                    <span class="text-xs font-bold text-green-700 uppercase">System Live</span>
                 </div>
-                <p class="text-[10px] text-gray-400 mt-1">CONFIDENTIAL REPORT</p>
-            </div>
-        </header>
+            </header>
 
-        <!-- Executive Summary -->
-        <section class="mb-6">
-            <div class="bg-slate-50 rounded-lg p-5 border border-slate-200">
-                <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                    <i class="ph ph-robot text-blue-600"></i> AI Executive Briefing
-                    <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Analysis Read</span>
-                </h3>
-                <div class="text-xs md:text-sm text-slate-700 leading-relaxed">
-                    {summary_html}
+            <!-- Executive Summary -->
+            <section class="mb-6">
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="ph-fill ph-robot text-blue-600"></i> AI Executive Briefing
+                    </h3>
+                    <div class="text-xs md:text-sm text-slate-700 leading-relaxed space-y-2">
+                        {summary_html}
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- KPIs -->
-        <section class="grid grid-cols-4 gap-4 mb-6">
-            <div class="p-4 rounded-lg border border-blue-100 bg-blue-50/50">
-                <p class="text-xs text-blue-500 font-bold uppercase mb-1">Total News</p>
-                <p class="text-3xl font-bold text-slate-800" id="total-count">-</p>
-            </div>
-            <div class="p-4 rounded-lg border border-red-100 bg-red-50/50">
-                <p class="text-xs text-red-500 font-bold uppercase mb-1">Critical Risk</p>
-                <p class="text-3xl font-bold text-red-700" id="critical-count">-</p>
-            </div>
-            <div class="p-4 rounded-lg border border-amber-100 bg-amber-50/50">
-                <p class="text-xs text-amber-500 font-bold uppercase mb-1">Warning</p>
-                <p class="text-3xl font-bold text-amber-700" id="warning-count">-</p>
-            </div>
-            <div class="p-4 rounded-lg border border-green-100 bg-green-50/50">
-                <p class="text-xs text-green-600 font-bold uppercase mb-1">Top Keyword</p>
-                <p class="text-xl font-bold text-green-800 truncate" id="top-keyword">-</p>
-            </div>
-        </section>
-
-        <!-- Charts Area -->
-        <section class="grid grid-cols-3 gap-6 mb-6">
-            <div class="col-span-2 border border-gray-100 rounded-xl p-4 shadow-sm bg-white">
-                <h3 class="text-xs font-bold text-gray-500 uppercase mb-4">Daily Trend Analysis</h3>
-                <div class="relative h-48 w-full">
-                    <canvas id="trendChart"></canvas>
+            <!-- KPIs -->
+            <section class="grid grid-cols-4 gap-4 mb-6">
+                <div class="p-4 rounded-xl border border-gray-100 bg-white shadow-sm flex flex-col justify-between">
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Feed</p>
+                    <p class="text-3xl font-bold text-slate-800 mt-1" id="total-count">-</p>
                 </div>
-            </div>
-            <div class="border border-gray-100 rounded-xl p-4 shadow-sm bg-white">
-                <h3 class="text-xs font-bold text-gray-500 uppercase mb-4">Risk Distribution</h3>
-                <div class="relative h-48 w-full flex justify-center">
-                    <canvas id="riskChart"></canvas>
+                <div class="p-4 rounded-xl border-l-4 border-red-500 bg-red-50/30 flex flex-col justify-between">
+                    <p class="text-[10px] text-red-500 font-bold uppercase tracking-wider">Critical</p>
+                    <p class="text-3xl font-bold text-red-700 mt-1" id="critical-count">-</p>
                 </div>
-            </div>
-        </section>
-
-        <!-- Smart Filter (Buttons) -->
-        <section class="mb-4 no-print">
-            <div class="flex flex-wrap gap-2 items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
-                <div class="flex items-center gap-2 mr-4">
-                    <i class="ph ph-funnel text-gray-400"></i>
-                    <span class="text-xs font-bold text-gray-500">SMART FILTER</span>
+                <div class="p-4 rounded-xl border-l-4 border-amber-500 bg-amber-50/30 flex flex-col justify-between">
+                    <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Warning</p>
+                    <p class="text-3xl font-bold text-amber-700 mt-1" id="warning-count">-</p>
                 </div>
-                
-                <!-- Date Buttons -->
-                <div class="flex gap-1" id="date-filters">
-                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="today">Today</button>
-                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="3d">3 Days</button>
-                    <button class="btn-filter active px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="7d">7 Days</button>
-                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="all">All Time</button>
+                <div class="p-4 rounded-xl border border-gray-100 bg-white shadow-sm flex flex-col justify-between">
+                    <p class="text-[10px] text-green-600 font-bold uppercase tracking-wider">Top Keyword</p>
+                    <p class="text-lg font-bold text-green-800 mt-1 truncate" id="top-keyword">-</p>
                 </div>
+            </section>
 
-                <div class="h-4 w-px bg-gray-300 mx-2"></div>
-
-                <!-- Risk Buttons -->
-                <div class="flex gap-1" id="risk-filters">
-                    <button class="btn-filter active px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="all">All Risks</button>
-                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="RED">Critical</button>
-                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="AMBER">Warning</button>
+            <!-- Charts Area -->
+            <section class="grid grid-cols-3 gap-6 mb-6">
+                <div class="col-span-2 border border-gray-100 rounded-xl p-4 shadow-sm bg-white">
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-4 tracking-wider">7-Day Incident Trend</h3>
+                    <div class="relative h-40 w-full">
+                        <canvas id="trendChart"></canvas>
+                    </div>
                 </div>
-                
-                <div class="h-4 w-px bg-gray-300 mx-2"></div>
-
-                <!-- Keyword Buttons (Dynamic) -->
-                <div class="flex gap-1 flex-wrap" id="keyword-filters">
-                    <button class="btn-filter active px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="all">All Topics</button>
+                <div class="border border-gray-100 rounded-xl p-4 shadow-sm bg-white">
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-4 tracking-wider">Risk Distribution</h3>
+                    <div class="relative h-40 w-full flex justify-center">
+                        <canvas id="riskChart"></canvas>
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- Data List -->
-        <section>
-            <div class="flex justify-between items-end mb-3">
-                <h3 class="text-sm font-bold text-slate-800">Intelligence Feed</h3>
-                <span class="text-xs text-slate-400" id="filtered-count">Total: 0</span>
-            </div>
-            <div id="news-container" class="grid grid-cols-2 gap-3">
-                <!-- Cards will be injected here -->
-            </div>
-        </section>
+            <!-- Data List -->
+            <section class="flex-1 min-h-0 flex flex-col">
+                <div class="flex justify-between items-end mb-3">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="ph-fill ph-list-dashes text-gray-400"></i> Intelligence Feed
+                    </h3>
+                    <span class="text-xs text-slate-400 font-mono" id="filtered-count">Total: 0</span>
+                </div>
+                <div id="news-container" class="grid grid-cols-2 gap-3 pb-2">
+                    <!-- Cards will be injected here -->
+                </div>
+            </section>
 
-        <!-- Footer -->
-        <footer class="mt-8 pt-4 border-t border-gray-100 flex justify-between items-center text-[10px] text-gray-400">
-            <p>Generated by Security Report Automation System</p>
-            <p>CONFIDENTIAL | INTERNAL USE ONLY</p>
-        </footer>
+        </main>
     </div>
 
     <script>
@@ -386,9 +439,9 @@ def generate_dashboard(news_data, summary_map):
             const container = document.getElementById('keyword-filters');
             keywords.forEach(k => {{
                 const btn = document.createElement('button');
-                btn.className = 'btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium';
-                btn.textContent = k;
+                btn.className = 'btn-filter';
                 btn.dataset.val = k;
+                btn.innerHTML = `<span>${{k}}</span>`; // Simple span for text
                 btn.onclick = () => setFilter('keyword', k);
                 container.appendChild(btn);
             }});
@@ -532,10 +585,6 @@ def generate_dashboard(news_data, summary_map):
             const div = document.getElementById('news-container');
             div.innerHTML = '';
             
-            // Show only top 8 items to fit on page (or scrollable if needed, but intended for single page)
-            // For PDF purposes, we allow it to grow, but visually we want compact.
-            // Let's list all but styled compactly.
-            
             if (currentData.length === 0) {{
                 div.innerHTML = '<div class="col-span-2 text-center text-gray-400 py-8 text-sm">No data available</div>';
                 return;
@@ -557,9 +606,6 @@ def generate_dashboard(news_data, summary_map):
                             <span class="text-[10px] text-gray-400">${{item.date}}</span>
                         </div>
                         <h4 class="text-sm font-bold text-slate-800 leading-snug group-hover:text-blue-700 mb-1 line-clamp-2">${{item.title}}</h4>
-                    </div>
-                    <div class="flex justify-between items-end mt-2">
-                        <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${{item.keyword}}</span>
                     </div>
                 `;
                 div.appendChild(el);
