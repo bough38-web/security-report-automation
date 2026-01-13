@@ -1,12 +1,17 @@
+import sys
 import json
 import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
+from email.header import Header
 from email import encoders
 from datetime import datetime
 import time
+
+# 한글 출력을 위한 인코딩 설정
+sys.stdout.reconfigure(encoding='utf-8')
 
 import requests
 import feedparser
@@ -20,7 +25,7 @@ from report_generator import make_ppt
 def setup_environment():
     """환경 변수(.env)를 로드합니다."""
     # GitHub Actions에서는 Secrets가 자동으로 주입되므로 .env가 없어도 괜찮습니다.
-    load_dotenv() 
+    load_dotenv(override=True) 
 
 def load_keywords():
     """JSON 파일에서 키워드 목록을 불러옵니다."""
@@ -101,10 +106,10 @@ def send_email(file_path):
     msg['From'] = smtp_user
     msg['To'] = MAIL_TO
     msg['Cc'] = MAIL_CC
-    msg['Subject'] = MAIL_SUBJECT
+    msg['Subject'] = Header(MAIL_SUBJECT, 'utf-8')
 
     body = f"안녕하세요,\n\n{datetime.now().date()} 보안·안전 자동 보고서입니다.\n첨부파일을 확인해주세요."
-    msg.attach(MIMEText(body, 'plain'))
+    msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
     try:
         with open(file_path, "rb") as attachment:
