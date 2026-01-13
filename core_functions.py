@@ -188,8 +188,23 @@ def generate_dashboard(news_data, summary_map):
         .btn-filter:hover:not(.active) {{ background-color: #eff6ff; }}
         
         /* PDF Generation Overrides */
+        /* PDF Generation Overrides */
         body.generating-pdf .no-print {{ display: none !important; }}
-        body.generating-pdf .a4-page {{ margin: 0 !important; box-shadow: none !important; border: none !important; width: 100% !important; max-width: none !important; }}
+        body.generating-pdf .a4-page {{ 
+            margin: 0 !important; 
+            padding: 10mm !important;
+            width: 210mm !important; 
+            height: 297mm !important; /* Force A4 Height */
+            max-height: 297mm !important;
+            overflow: hidden !important; /* Crop overflow */
+            box-shadow: none !important; 
+            border: none !important; 
+        }}
+        /* Hide lower part of news list if it overflows */
+        body.generating-pdf #news-container {{
+            max-height: 110mm !important;
+            overflow: hidden !important;
+        }}
         body.generating-pdf * {{ transform: none !important; transition: none !important; box-shadow: none !important; }}
         body.generating-pdf ::-webkit-scrollbar {{ display: none; }}
         
@@ -546,7 +561,7 @@ def generate_dashboard(news_data, summary_map):
                 margin:       0,
                 filename:     `Security_Report_${{new Date().toISOString().slice(0,10)}}.pdf`,
                 image:        {{ type: 'jpeg', quality: 0.98 }},
-                html2canvas:  {{ scale: 2, useCORS: true, scrollY: 0 }},
+                html2canvas:  {{ scale: 1.5, useCORS: true, scrollY: 0 }},
                 jsPDF:        {{ unit: 'mm', format: 'a4', orientation: 'portrait' }}
             }};
             
