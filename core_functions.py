@@ -197,7 +197,10 @@ def generate_dashboard(news_data, summary_map):
     
     <!-- Control Bar -->
     <div class="fixed top-4 right-4 z-50 flex gap-2 no-print">
-        <button onclick="downloadPDF()" class="bg-blue-900 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-800 flex items-center gap-2 font-medium">
+        <button onclick="triggerUpdate()" class="bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-slate-700 flex items-center gap-2 font-medium border border-slate-600 transition-colors">
+            <i class="ph ph-arrows-clockwise"></i> Update Data
+        </button>
+        <button onclick="downloadPDF()" class="bg-blue-900 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-800 flex items-center gap-2 font-medium transition-colors">
             <i class="ph ph-download-simple"></i> Download PDF
         </button>
     </div>
@@ -548,6 +551,49 @@ def generate_dashboard(news_data, summary_map):
                     document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
                 }});
             }}, 100);
+        }}
+
+        async function triggerUpdate() {{
+            const pwd = prompt("관리자 암호를 입력하세요:");
+            if (pwd !== "3867") {{
+                if (pwd) alert("암호가 일치하지 않습니다.");
+                return;
+            }}
+
+            let token = localStorage.getItem("gh_pat");
+            if (!token) {{
+                token = prompt("최초 1회 설정: GitHub Personal Access Token을 입력해주세요.\\n(입력된 토큰은 브라우저에만 저장되며 서버로 전송되지 않습니다.)");
+                if (!token) return;
+                localStorage.setItem("gh_pat", token);
+            }}
+
+            const repoOwner = "bough38-web";
+            const repoName = "security-report-automation";
+            const workflowId = "scheduled_report.yml";
+
+            if (!confirm("지금 즉시 크롤링을 시작하시겠습니까?\\n(약 2~3분 소요됩니다)")) return;
+
+            try {{
+                const response = await fetch(`https://api.github.com/repos/${{repoOwner}}/${{repoName}}/actions/workflows/${{workflowId}}/dispatches`, {{
+                    method: 'POST',
+                    headers: {{
+                        'Authorization': `Bearer ${{token}}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }},
+                    body: JSON.stringify({{ ref: 'main' }})
+                }});
+
+                if (response.ok) {{
+                    alert("✅ 업데이트 요청 성공!\\n약 3분 뒤에 새로고침 해주세요.");
+                }} else {{
+                    const err = await response.json();
+                    alert(`❌ 요청 실패: ${{err.message}}\\n토큰 권한(workflow)을 확인해주세요.`);
+                    // 토큰 문제일 수 있으므로 초기화 기회 제공
+                    if(confirm("토큰을 재설정하시겠습니까?")) localStorage.removeItem("gh_pat");
+                }}
+            }} catch (error) {{
+                alert(`❌ 네트워크 오류: ${{error}}\\n인터넷 연결을 확인해주세요.`);
+            }}
         }}
 
         // Run
