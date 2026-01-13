@@ -282,6 +282,16 @@ def generate_dashboard(news_data, summary_map):
                     <span class="text-xs font-bold text-gray-500">SMART FILTER</span>
                 </div>
                 
+                <!-- Date Buttons -->
+                <div class="flex gap-1" id="date-filters">
+                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="today">Today</button>
+                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="3d">3 Days</button>
+                    <button class="btn-filter active px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="7d">7 Days</button>
+                    <button class="btn-filter px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="all">All Time</button>
+                </div>
+
+                <div class="h-4 w-px bg-gray-300 mx-2"></div>
+
                 <!-- Risk Buttons -->
                 <div class="flex gap-1" id="risk-filters">
                     <button class="btn-filter active px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-600 font-medium" data-val="all">All Risks</button>
@@ -325,7 +335,7 @@ def generate_dashboard(news_data, summary_map):
         let riskChart = null;
 
         // Current Filter State
-        let state = {{ risk: 'all', keyword: 'all' }};
+        let state = {{ risk: 'all', keyword: 'all', date: '7d' }};
 
         function init() {{
             initFilters();
@@ -349,13 +359,20 @@ def generate_dashboard(news_data, summary_map):
             document.querySelectorAll('#risk-filters button').forEach(btn => {{
                 btn.onclick = () => setFilter('risk', btn.dataset.val);
             }});
+
+            // Attach Date Button Events
+            document.querySelectorAll('#date-filters button').forEach(btn => {{
+                btn.onclick = () => setFilter('date', btn.dataset.val);
+            }});
         }}
 
         function setFilter(type, val) {{
             state[type] = val;
             
             // Update UI Active State
-            document.querySelectorAll(`#${{type}}-filters button`).forEach(b => {{
+            let selector = `#${{type}}-filters button`;
+            
+            document.querySelectorAll(selector).forEach(b => {{
                 if(b.dataset.val === val) b.classList.add('active');
                 else b.classList.remove('active');
             }});
@@ -364,10 +381,28 @@ def generate_dashboard(news_data, summary_map):
         }}
 
         function filterData() {{
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
             currentData = rawData.filter(item => {{
+                // Keyword & Risk Filter
                 const matchKey = state.keyword === 'all' || item.keyword === state.keyword;
                 const matchRisk = state.risk === 'all' || item.risk === state.risk;
-                return matchKey && matchRisk;
+
+                // Date Filter
+                let matchDate = true;
+                if (state.date !== 'all') {{
+                    const itemDate = new Date(item.date);
+                    itemDate.setHours(0,0,0,0);
+                    const diffTime = Math.abs(today - itemDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    
+                    if (state.date === 'today') matchDate = (diffDays === 0);
+                    else if (state.date === '3d') matchDate = (diffDays <= 3);
+                    else if (state.date === '7d') matchDate = (diffDays <= 7);
+                }}
+
+                return matchKey && matchRisk && matchDate;
             }});
             renderAll();
         }}
