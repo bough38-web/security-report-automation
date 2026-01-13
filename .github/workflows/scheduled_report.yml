@@ -2,7 +2,7 @@ name: Security Report Automation
 
 on:
   schedule:
-    - cron: '0 23 * * *' # 매일 한국 시간 오전 8시 (UTC 23:00)
+    - cron: "0 23 * * *" # 매일 한국 시간 오전 8시 (UTC 23:00)
   workflow_dispatch:
 
 jobs:
@@ -10,28 +10,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Run Report Generation
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        SMTP_USER: ${{ secrets.SMTP_USER }}
-        SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-        GITHUB_ACTIONS: "true"
-      run: python main.py
+      - name: Run Report Generation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          GITHUB_ACTIONS: "true"
+        run: python main.py
 
-    - name: Upload Report Artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: Security Report
-        path: security_report_*.pptx
+      - name: Upload Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Security Report
+          path: security_report_*.pptx
